@@ -20,7 +20,7 @@ Make sure all of the following are ready before Session 1. If you get stuck, rea
 
 Watch these before the session. They're short and will make the live coding much easier to follow.
 
-1. **Learn Next.js 15 In 12 Minutes**: Understand file-based routing and the difference between Server and Client Components
+1. **Learn Next.js In 12 Minutes**: Understand file-based routing and the difference between Server and Client Components
 
 - (only the first 12 minutes): https://www.youtube.com/watch?v=p-eASfbBXEk
 
