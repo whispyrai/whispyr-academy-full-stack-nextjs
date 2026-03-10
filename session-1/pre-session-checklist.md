@@ -13,6 +13,7 @@ Make sure all of the following are ready before Session 1. If you get stuck, rea
 - [ ] **Node.js** installed (v20+) — run `node -v` in your terminal to check
 - [ ] **npm** installed (comes with Node.js) — run `npm -v` to check
 - [ ] **VS Code** installed with these extensions: ESLint, Prettier, Tailwind CSS IntelliSense, Prisma
+  - You can use a VS Code fork if you prefer (Cursor, Antigravity, etc.)
 - [ ] **Git** installed — run `git -v` to check
 - [ ] **GitHub account** created — you'll push your project here
 
