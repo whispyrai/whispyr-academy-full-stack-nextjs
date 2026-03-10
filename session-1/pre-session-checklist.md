@@ -8,7 +8,7 @@
 
 ### Account Setup (Required)
 
-Make sure all of the following are ready before Session 1. If you get stuck, reach out in the group chat.
+Make sure all of the following are ready before Session 1. If you get stuck, reach out to me.
 
 - [ ] **Node.js** installed (v20+) — run `node -v` in your terminal to check
 - [ ] **npm** installed (comes with Node.js) — run `npm -v` to check
