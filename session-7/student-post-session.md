@@ -1196,7 +1196,8 @@ We built the manager dashboard end-to-end and the attachments service layer (mod
 3. **Files tab on lead detail page** -- a new tab component with upload button, file list, and download links
 4. **Status pie chart** -- a `PieChart` (or second `BarChart`) visualizing leads-by-status, complementing the stage bar chart
 5. **Delete attachment flow** -- `DELETE /api/leads/[id]/attachments/[attachmentId]` with Storage cleanup and AlertDialog confirmation
-6. **Production polish pass** -- loading skeletons, empty states, success/error toasts, disabled buttons during mutations
+6. **Bulk lead reassignment** -- role-aware leads table with an `assignedTo` column, bulk-selection checkboxes, and a reassignment dialog backed by a transactional API route
+7. **Production polish pass** -- loading skeletons, empty states, success/error toasts, disabled buttons during mutations
 
 ---
 
@@ -1369,7 +1370,66 @@ Add `DELETE /api/leads/[id]/attachments/[attachmentId]` and wire it to the UI.
 
 **Hook:** `useDeleteAttachment(leadId)` mutation that invalidates `["attachments", leadId]` on success.
 
-### Task 6: Production Polish Pass (estimated: 1 hour)
+### Task 6: Bulk Lead Reassignment (estimated: 2-2.5 hours)
+
+This was discussed in the session video as something you would build on your own. It ties together patterns from every session so far: role-aware data filtering, Prisma transactions, activity logging, TanStack mutations, and Dialog UI.
+
+**Part A: Role-aware leads table columns**
+
+Update the existing leads table to show an `Assigned To` column that only renders when the current user is a manager or admin. Agents should not see this column -- they only see their own leads.
+
+Add bulk-selection checkboxes (a header checkbox for "select all" and per-row checkboxes). These also only render for managers and admins. Store selected lead IDs in component state.
+
+**Part B: Reassignment service + route**
+
+Create `POST /api/leads/reassign` with this shape:
+
+```typescript
+// Request body
+{
+  leadIds: string[];      // the selected lead IDs
+  assignToId: string;     // the target agent's profile ID
+}
+```
+
+The route should:
+
+1. Authenticate with `authenticateUser([Role.MANAGER, Role.ADMIN])` -- agents cannot reassign
+2. Validate the request body with a Zod schema (`leadIds` as `z.array(z.uuid()).min(1)`, `assignToId` as `z.uuid()`)
+3. Verify the target agent exists and is active
+4. Run a single Prisma `$transaction` that updates all leads and creates one `ASSIGNMENT_CHANGE` activity per lead
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  for (const leadId of leadIds) {
+    await tx.lead.update({
+      where: { id: leadId },
+      data: { assignedToId: assignToId },
+    });
+
+    await tx.activity.create({
+      data: {
+        leadId,
+        actorId: profile.id,
+        type: ActivityType.ASSIGNMENT_CHANGE,
+        content: `Reassigned to ${targetAgent.name}`,
+      },
+    });
+  }
+});
+```
+
+One transaction means either all leads are reassigned or none are. No partial state.
+
+**Part C: Reassignment hook + dialog**
+
+Create `useReassignLeads` mutation hook that invalidates `["leads"]` on success.
+
+Add a "Reassign Selected" button to the leads table toolbar that appears when at least one lead is selected. Clicking it opens a `Dialog` (constructive action, not AlertDialog) with a dropdown to select the target agent. The agent list comes from `useUsers` (filtered to active agents only).
+
+On success, clear the selection, show a toast ("Reassigned 5 leads to Ahmed"), and the table refetches automatically via cache invalidation.
+
+### Task 7: Production Polish Pass (estimated: 1 hour)
 
 Go through every page and mutation in the CRM. Check for:
 
@@ -1397,6 +1457,9 @@ Before Session 8, verify all of the following:
 - Uploading a file shows it immediately in the list and creates an `ATTACHMENT_ADDED` entry in the activity timeline
 - Uploading a file over 10MB or with a disallowed MIME type returns a clean error message
 - Deleting an attachment removes it from both Storage and the database
+- Managers/admins see an `Assigned To` column and bulk-selection checkboxes on the leads table; agents do not
+- Selecting multiple leads and clicking "Reassign Selected" opens a dialog, reassigns all leads in one transaction, and logs an `ASSIGNMENT_CHANGE` activity per lead
+- `POST /api/leads/reassign` returns 403 for agents
 - `npm run build` passes with zero errors
 - Code committed and pushed to GitHub
 - Pre-Session 8 videos watched (Vercel deployment + Prisma migrations in production)
